@@ -1,0 +1,1507 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+    <title>公道钟馗 - 六爻问卦 (手势版)</title>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <style>
+        /* ================= 中式古典 & 道教 UI 美化 ================= */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { font-size: 14px; }
+        
+        /* 整体背景：底图 + 渐变遮罩 + 太极八卦暗纹水印 */
+        body { 
+            font-family: 'LiSu', 'STKaiti', 'KaiTi', '华文楷体', serif; 
+            background-color: #0d1117; 
+            background-image: radial-gradient(circle at 50% 50%, rgba(26, 34, 51, 0.95) 0%, rgba(13, 17, 23, 0.98) 80%), url('底图.png');
+            background-size: cover;
+            background-position: center center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            min-height: 100vh; 
+            color: #e5d3b3; 
+            position: relative;
+            z-index: 0;
+            overflow-x: hidden;
+            overscroll-behavior-y: none;
+            -webkit-overflow-scrolling: touch;
+        }
+        body::before {
+            content: '☯';
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 60vh;
+            color: rgba(212, 175, 55, 0.03);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .page { display: none; padding: 1.43rem; padding-top: 5rem; padding-bottom: 7.14rem; }
+        .page.active { display: block; }
+        
+        header { 
+            position: fixed; top: 0; left: 0; right: 0; 
+            background: linear-gradient(to bottom, #111, rgba(13, 17, 23, 0.9)); 
+            border-bottom: 2px solid #5a0e0e; 
+            padding: calc(1rem + env(safe-area-inset-top)) 1.43rem 1rem;
+            display: flex; justify-content: space-between; align-items: center; 
+            z-index: 100; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.8);
+        }
+        .logo { 
+            font-size: 1.5rem; font-weight: bold; color: #d4af37; 
+            letter-spacing: 0.3rem; 
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+        .header-btn { 
+            background: transparent; border: 1px solid #d4af37; color: #d4af37; 
+            padding: 0.4rem 1rem; border-radius: 2px; font-size: 1rem; 
+            font-family: inherit; cursor: pointer; transition: all 0.3s; 
+        }
+        .header-btn:hover { background: rgba(212, 175, 55, 0.15); }
+
+        #homePage { text-align: center; padding-top: 10rem; }
+        .brand-title { 
+            font-size: 3.5rem; font-weight: bold; color: #d4af37; 
+            letter-spacing: 0.8rem; margin-bottom: 1rem; 
+            text-shadow: 0 0 20px rgba(212, 175, 55, 0.3), 2px 4px 8px rgba(0,0,0,0.9); 
+        }
+        .brand-slogan { 
+            font-size: 1.2rem; color: #8b1d1d; 
+            letter-spacing: 0.4rem; margin-bottom: 4rem; 
+            font-weight: bold; text-shadow: 1px 1px 2px #000;
+        }
+
+        .btn { 
+            display: block; width: 80%; max-width: 22rem; margin: 1.5rem auto; 
+            padding: 1rem 2rem; font-size: 1.3rem; border: none; 
+            border-radius: 4px; cursor: pointer; transition: all 0.3s; 
+            letter-spacing: 0.3rem; font-family: inherit; position: relative;
+        }
+        .btn-primary { 
+            background: linear-gradient(180deg, #8b1d1d 0%, #5a0e0e 100%); 
+            color: #f4e8c1; font-weight: bold; 
+            border: 1px solid #d4af37;
+            box-shadow: inset 0 0 8px rgba(0,0,0,0.5), 0 4px 15px rgba(139, 29, 29, 0.4); 
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(139, 29, 29, 0.6); border-color: #ffd700; }
+        .btn-gesture { 
+            background: linear-gradient(180deg, #163a4a 0%, #0a1f2b 100%); 
+            color: #8be0ff; font-weight: bold; 
+            border: 1px solid #4a90e2;
+            box-shadow: inset 0 0 8px rgba(0,0,0,0.5), 0 4px 15px rgba(22, 58, 74, 0.4); 
+        }
+        .btn-gesture:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(74, 144, 226, 0.4); }
+        .btn-secondary { 
+            background: rgba(0,0,0,0.5); border: 1px solid #d4af37; color: #d4af37; 
+        }
+        .btn-secondary:hover { background: rgba(212, 175, 55, 0.1); }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; filter: grayscale(100%); }
+
+        #drawPage { text-align: center; }
+        
+        .tortoise-container { position: relative; width: 14.29rem; height: 14.29rem; margin: 2.14rem auto; cursor: pointer; }
+        .tortoise-shell { 
+            width: 100%; height: 100%; 
+            background: radial-gradient(circle at 50% 35%, #4a3018 0%, #2b1d0e 60%, #1a1108 100%); 
+            border-radius: 50% 50% 45% 45%; 
+            box-shadow: inset 0 -1rem 2rem rgba(0,0,0,0.8), 0 1rem 2rem rgba(0,0,0,0.6), inset 0 0.5rem 1rem rgba(212, 175, 55, 0.15); 
+            position: relative; transition: transform 0.1s; 
+            border: 2px solid #5c4022;
+        }
+        .tortoise-shell:hover { transform: scale(1.05); }
+        .tortoise-shell.shaking { animation: shake 0.15s infinite; }
+        @keyframes shake { 0%, 100% { transform: rotate(0deg); } 25% { transform: rotate(-5deg); } 75% { transform: rotate(5deg); } }
+        .tortoise-pattern { 
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+            width: 70%; height: 75%; border: 2px solid rgba(212, 175, 55, 0.3); 
+            border-radius: 40% 40% 50% 50%; 
+            background-image: linear-gradient(45deg, transparent 48%, rgba(212,175,55,0.2) 49%, rgba(212,175,55,0.2) 51%, transparent 52%), linear-gradient(-45deg, transparent 48%, rgba(212,175,55,0.2) 49%, rgba(212,175,55,0.2) 51%, transparent 52%);
+            background-size: 2rem 2rem;
+        }
+        .tortoise-center { 
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+            width: 1.5rem; height: 1.5rem; background: #8b1d1d; border: 1px solid #d4af37;
+            border-radius: 50%; box-shadow: 0 0 15px rgba(212, 175, 55, 0.6); 
+        }
+
+        .coins-container-three { display: flex; justify-content: center; gap: 2.5rem; margin-top: 2rem; }
+        .coin { 
+            width: 4rem; height: 4rem; border-radius: 50%; 
+            background: radial-gradient(circle, #d4af37 0%, #aa7c11 80%, #6b4c05 100%); 
+            box-shadow: inset 0 -3px 6px rgba(0,0,0,0.6), 0 5px 10px rgba(0,0,0,0.5); 
+            position: relative; cursor: pointer; transition: all 0.3s; 
+            display: flex; align-items: center; justify-content: center; 
+            color: #000; font-weight: bold; border: 2px solid #8b6508;
+        }
+        .coin::after {
+            content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 1.2rem; height: 1.2rem; background: #0d1117; 
+            border: 1px solid #5a3c00; box-shadow: inset 0 0 5px #000;
+        }
+        .coin.throwing { animation: throwCoin 1.5s ease-out forwards; }
+        @keyframes throwCoin { 0% { transform: translateY(0) rotate(0deg) scale(1); opacity: 1; } 50% { transform: translateY(-12rem) rotate(360deg) scale(1.2); opacity: 0.9; } 100% { transform: translateY(0) rotate(720deg) scale(1); opacity: 1; } }
+        
+        .result-row { display: flex; justify-content: center; gap: 2rem; margin-top: 1rem; }
+        .result-item { 
+            width: 3.5rem; height: 3.5rem; border-radius: 50%; 
+            background: rgba(0, 0, 0, 0.5); border: 2px solid #555; 
+            display: flex; align-items: center; justify-content: center; font-size: 1.5rem; 
+            position: relative;
+        }
+        .result-item.front { 
+            background: radial-gradient(circle, #d4af37 0%, #8b6508 100%); border-color: #ffd700; color: transparent;
+        }
+        .result-item.front::after { content: ''; position: absolute; width: 1rem; height: 1rem; background: #0d1117; border: 1px solid #5a3c00; }
+        .result-item.back { background: radial-gradient(circle, #4a4a4a, #1a1a1a); border-color: #888; color: transparent; }
+        .result-item.back::after { content: '〇'; font-size: 1.2rem; color: #888; position: absolute; }
+
+        .hexagram-container { 
+            display: flex; flex-direction: column; gap: 0.6rem; padding: 1.5rem; 
+            background: linear-gradient(to right, rgba(20,25,35,0.9), rgba(30,35,45,0.9), rgba(20,25,35,0.9)); 
+            border-radius: 4px; border: 1px solid #d4af37; width: 22rem; margin: 0 auto; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6); position: relative;
+        }
+        .yao-row { display: flex; align-items: center; justify-content: center; gap: 1rem; width: 100%; height: 2rem; }
+        .yao-label { width: 3rem; text-align: right; font-size: 1rem; color: #a99a80; flex-shrink: 0; }
+        .yao-cell { display: flex; align-items: center; gap: 0.8rem; }
+        
+        .yao-symbol { width: 8rem; height: 0.8rem; flex-shrink: 0; position: relative; }
+        .yao-symbol.yao-empty { background: rgba(255, 255, 255, 0.05); border-radius: 2px; }
+        .yao-symbol.yao-yang { 
+            background: #8b1d1d; border-radius: 2px; box-shadow: 0 0 5px rgba(139, 29, 29, 0.5); border: 1px solid #5a0e0e;
+        }
+        .yao-symbol.yao-yin { display: flex; justify-content: space-between; background: transparent; }
+        .yao-symbol.yao-yin::before, .yao-symbol.yao-yin::after { 
+            content: ''; background: #1b628c; width: 3.5rem; height: 0.8rem; border-radius: 2px; 
+            box-shadow: 0 0 8px rgba(27, 98, 140, 0.7); border: 1px solid #0f3d59;
+        }
+        .dong-indicator { width: 1.5rem; font-size: 1.2rem; font-family: 'SimSun', serif; flex-shrink: 0; opacity: 0; }
+        .dong-indicator.dong-yang { opacity: 1; color: #d4af37; text-shadow: 0 0 5px #000; }
+        .dong-indicator.dong-yin { opacity: 1; color: #8b1d1d; text-shadow: 0 0 5px #000; }
+
+        .back-btn { 
+            position: absolute; 
+            top: 5.5rem; 
+            left: 1.43rem; 
+            width: 3.5rem; 
+            height: 2.5rem; 
+            border-radius: 4px; 
+            background: rgba(0, 0, 0, 0.5); 
+            border: 1px solid #d4af37; 
+            color: #d4af37; 
+            font-size: 1.1rem;
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            z-index: 101;
+        }
+        .back-btn:hover { background: rgba(212, 175, 55, 0.2); }
+
+        .question-hint { 
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"><rect width="4" height="4" fill="none"/><path d="M0 0L4 4ZM4 0L0 4Z" stroke="rgba(212,175,55,0.05)" stroke-width="1"/></svg>');
+            background-color: rgba(20, 25, 35, 0.8);
+            border: 1px solid #5a0e0e; border-radius: 4px; padding: 1.5rem; margin-bottom: 1.5rem; text-align: center; 
+            position: relative;
+        }
+        .question-hint::before { 
+            content: ''; position: absolute; top: -4px; left: -10px; right: -10px; height: 8px; 
+            background: linear-gradient(to bottom, #3e2723, #1b100b); border-radius: 4px; border: 1px solid #000;
+        }
+        .hint-title { font-size: 1.2rem; font-weight: bold; color: #d4af37; margin-bottom: 0.5rem; letter-spacing: 2px; }
+        .hint-text { font-size: 1rem; color: #e5d3b3; line-height: 1.6; }
+        
+        .question-categories { display: flex; flex-wrap: wrap; gap: 0.8rem; margin-bottom: 1.5rem; justify-content: center; }
+        .category-btn { 
+            padding: 0.5rem 1rem; border: 1px solid #6b4c05; background: rgba(0,0,0,0.6); 
+            color: #a99a80; border-radius: 2px; cursor: pointer; transition: all 0.3s; font-family: inherit;
+        }
+        .category-btn.active { background: #8b1d1d; color: #f4e8c1; border-color: #d4af37; font-weight: bold; }
+        
+        .question-list { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.5rem; max-height: 18rem; overflow-y: auto; padding-right: 0.5rem; }
+        .question-list::-webkit-scrollbar { width: 6px; }
+        .question-list::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); border-left: 1px solid #333; }
+        .question-list::-webkit-scrollbar-thumb { background: #6b4c05; }
+        
+        .question-item { 
+            padding: 1rem; background: rgba(255, 255, 255, 0.03); 
+            border-left: 3px solid transparent; border-bottom: 1px solid rgba(212, 175, 55, 0.1);
+            cursor: pointer; transition: all 0.3s; text-align: left; color: #c9bda5; 
+        }
+        .question-item:hover { background: rgba(212, 175, 55, 0.05); }
+        .question-item.selected { border-left-color: #d4af37; background: rgba(139, 29, 29, 0.15); color: #d4af37; }
+        
+        .selected-question { 
+            display: none; padding: 1.2rem; background: rgba(13, 17, 23, 0.9); 
+            border: 1px solid #d4af37; border-radius: 2px; margin-bottom: 1.5rem; 
+            box-shadow: inset 0 0 10px rgba(212,175,55,0.1);
+        }
+        .selected-question.show { display: block; }
+        .selected-label { font-size: 0.9rem; color: #a99a80; margin-bottom: 0.5rem; }
+        .selected-text { font-size: 1.2rem; color: #f4e8c1; font-weight: bold; letter-spacing: 1px; }
+
+        #resultPage { padding: 0; padding-top: 4.5rem; padding-bottom: 8.5rem; position: relative; }
+        .result-header { 
+            background: linear-gradient(to bottom, #111, rgba(13, 17, 23, 0.9)); 
+            border-bottom: 2px solid #5a0e0e; padding: 1rem; padding-left: 6rem; display: flex; align-items: center; gap: 1rem; 
+        }
+        .result-header .question-hint { background: transparent; border: none; padding: 0; flex: 1; margin: 0;}
+        .result-header .question-hint::before { display: none; }
+        
+        .main-content { display: flex; flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: stretch; gap: 1.5rem; padding: 1.5rem; }
+        
+        .gua-card-pair { 
+            display: flex; flex-direction: row; align-items: stretch; gap: 1.5rem; 
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"><rect width="4" height="4" fill="none"/><path d="M0 0L4 4ZM4 0L0 4Z" stroke="rgba(212,175,55,0.02)" stroke-width="1"/></svg>');
+            background-color: rgba(20, 25, 35, 0.8);
+            border: 1px solid #4a3018; padding: 1.5rem; flex: 1; min-width: 28rem; max-width: 38rem; 
+            box-shadow: 0 5px 15px rgba(0,0,0,0.8); position: relative; z-index: 2;
+        }
+        
+        .card-placeholder { 
+            position: relative; flex-shrink: 0; width: 10.5rem; height: 19rem; 
+            display: flex; align-items: center; justify-content: center; 
+            overflow: visible;
+            transition: transform 0.08s ease-out, box-shadow 0.15s ease-out; 
+            transform-origin: center center;
+            border-radius: 4px;
+            z-index: 10;
+        }
+        .card-placeholder img { 
+            width: 115%; height: 105%; object-fit: cover; object-position: center center; 
+            opacity: 0.85; filter: sepia(0.3); border-radius: 4px; transition: filter 0.3s ease; 
+        }
+        .card-placeholder.glowing {
+            box-shadow: 0 0 40px rgba(212, 175, 55, 0.7), inset 0 0 20px rgba(212, 175, 55, 0.5);
+        }
+        .card-placeholder.glowing img { filter: sepia(0) brightness(1.15) contrast(1.1); opacity: 1; }
+        .card-placeholder::before, .card-placeholder::after { display: none; }
+        .card-label { display: none; }
+        
+        .gua-card-pair .gua-section { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .gua-header { display: flex; align-items: center; justify-content: center; gap: 0.8rem; margin-bottom: 1rem; }
+        .gua-label { font-size: 0.9rem; color: #000; background: #d4af37; padding: 0.2rem 0.6rem; border-radius: 2px; font-weight: bold; }
+        .gua-name { font-size: 1.8rem; font-weight: bold; color: #d4af37; letter-spacing: 4px; text-shadow: 2px 2px 4px #000; }
+        
+        .gua-card-pair .hexagram-container { background: transparent; box-shadow: none; border: none; padding: 0; width: auto; gap: 0.4rem; }
+        .gua-card-pair .yao-symbol { width: 6rem; height: 0.5rem; }
+        .gua-card-pair .yao-symbol.yao-yin::before, .gua-card-pair .yao-symbol.yao-yin::after { width: 2.6rem; height: 0.5rem; }
+        
+        .gua-text { text-align: center; font-size: 1.1rem; color: #c9bda5; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px dashed #6b4c05; width: 100%; line-height: 1.6; }
+        
+        .dongyao-info { margin: 0 1.5rem 1.5rem 1.5rem; padding: 1rem; background: rgba(139, 29, 29, 0.1); border: 1px solid #8b1d1d; border-left: 4px solid #8b1d1d; text-align: center; font-size: 1.1rem; color: #d4af37; font-weight: bold; letter-spacing: 1px; z-index: 2; position: relative;}
+        
+        .card-analysis-box { background: linear-gradient(135deg, rgba(20, 25, 35, 0.95), rgba(15, 20, 25, 0.95)); border: 1px solid #5a3c00; padding: 2rem; margin: 0 1.5rem 1.5rem; position: relative; box-shadow: 0 8px 20px rgba(0,0,0,0.8); z-index: 2;}
+        .card-analysis-box::before, .card-analysis-box::after { content: ''; position: absolute; top: 0; bottom: 0; width: 12px; background: linear-gradient(to right, #2b1d0e, #5c4022, #2b1d0e); border: 1px solid #000; }
+        .card-analysis-box::before { left: -6px; border-radius: 6px 0 0 6px; }
+        .card-analysis-box::after { right: -6px; border-radius: 0 6px 6px 0; }
+        
+        .analysis-header { display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid #4a3018; }
+        .analysis-title { font-size: 1.4rem; font-weight: bold; color: #d4af37; letter-spacing: 0.2rem; }
+        .analysis-content { font-size: 1.1rem; color: #e5d3b3; line-height: 2; text-align: justify; }
+        .gua-title { font-size: 1.2rem; font-weight: bold; color: #8b1d1d; margin-top: 1rem; margin-bottom: 0.5rem; }
+        .dongyao-section { background: rgba(212, 175, 55, 0.05); border-left: 3px solid #d4af37; padding: 1rem; margin: 1.5rem 0; }
+        
+        .result-buttons { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: center; gap: 2rem; background: linear-gradient(to top, #000, rgba(13,17,23,0.9)); border-top: 2px solid #5a0e0e; z-index: 100; 
+            padding: 1rem 1.5rem calc(1rem + env(safe-area-inset-bottom));
+        }
+        .result-buttons .btn { width: 14rem; margin: 0; padding: 0.8rem; font-size: 1.2rem; }
+        
+        #historyPage { padding-top: 5rem; }
+        .history-title { text-align: center; font-size: 1.8rem; color: #d4af37; letter-spacing: 0.4rem; margin-bottom: 2rem; }
+        .history-item { background: rgba(20, 25, 35, 0.8); border: 1px solid #4a3018; border-left: 4px solid #5a0e0e; border-radius: 2px; padding: 1.2rem; margin-bottom: 1rem; cursor: pointer; }
+        .history-header { border-bottom: 1px dashed #333; padding-bottom: 0.5rem; margin-bottom: 0.8rem; }
+        .history-gua-name { font-size: 1.2rem; font-weight: bold; color: #d4af37; }
+        .clear-history-btn { display: none; width: 14rem; margin: 2rem auto; padding: 0.8rem; background: transparent; border: 1px solid #8b1d1d; color: #8b1d1d; font-size: 1.1rem; cursor: pointer; }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal-content { 
+            background: #0d1117; 
+            border: 2px solid #5a0e0e; 
+            border-radius: 4px; 
+            padding: 1.5rem; 
+            box-shadow: 0 0 30px rgba(0,0,0,0.9); 
+            width: 90%; 
+            max-width: 28rem; 
+            max-height: 80vh; 
+            overflow-y: auto; 
+        }
+        .modal-content::-webkit-scrollbar { width: 6px; }
+        .modal-content::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); border-radius: 3px; }
+        .modal-content::-webkit-scrollbar-thumb { background: #6b4c05; border-radius: 3px; }
+
+        .modal-title { color: #d4af37; font-size: 1.5rem; letter-spacing: 2px; text-align: center; }
+        .modal-btn { font-family: inherit; cursor: pointer; border-radius: 2px; font-size: 1rem; transition: all 0.3s; }
+        .modal-btn.cancel { border: 1px solid #666; color: #999; }
+        .modal-btn.cancel:hover { background: rgba(255,255,255,0.05); }
+        .modal-btn.confirm { background: #8b1d1d; color: #f4e8c1; border: 1px solid #d4af37; }
+        .modal-btn.confirm:hover { background: #5a0e0e; }
+
+        .qr-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin: 1.5rem 0; }
+        .qr-card { background: rgba(255, 255, 255, 0.02); border: 1px solid #4a3018; padding: 0.6rem; text-align: center; width: 100%; border-radius: 4px; transition: all 0.3s; }
+        .qr-card:hover { border-color: #d4af37; background: rgba(212, 175, 55, 0.04); }
+        .qr-card img { width: 100%; height: auto; border-radius: 2px; border: 1px solid #222; margin-bottom: 0.6rem; display: block; }
+        .qr-name { font-size: 1.1rem; color: #d4af37; font-weight: bold; margin-bottom: 0.2rem; }
+        .qr-id { font-size: 0.8rem; color: #a99a80; font-family: monospace, serif; }
+
+        #gestureContainer { display: none; width: 100%; max-width: 320px; height: 240px; margin: 0 auto 1.5rem auto; position: relative; border-radius: 4px; overflow: hidden; border: 2px solid #4a90e2; box-shadow: 0 0 20px rgba(74, 144, 226, 0.3); background: #000; }
+        #gestureHint { background: rgba(0,0,0,0.7); padding: 5px; color: #8be0ff; font-weight: bold; text-align: center; letter-spacing: 1px;}
+        
+        #silentGestureHint {
+            display: none; position: fixed; top: 5rem; right: 2rem; background: rgba(0,0,0,0.7);
+            border: 1px solid #d4af37; color: #d4af37; padding: 10px 15px; border-radius: 4px;
+            font-size: 1rem; z-index: 101; box-shadow: 0 0 15px rgba(212, 175, 55, 0.3);
+            animation: pulseHint 2s infinite; pointer-events: none;
+        }
+        @keyframes pulseHint { 0%, 100% { opacity: 0.8; } 50% { opacity: 1; box-shadow: 0 0 25px rgba(212, 175, 55, 0.6); } }
+
+        #magicCanvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 99; display: none; }
+
+        @media screen and (max-width: 768px) {
+            .gua-card-pair { flex-direction: column; align-items: center; gap: 1rem; }
+            .card-placeholder { width: 100%; max-width: 14rem; height: 20rem; }
+        }
+
+        /* ================= 登录与个人中心样式 ================= */
+        .login-container {
+            width: 85%; max-width: 22rem; margin: 0 auto;
+            background: rgba(20, 25, 35, 0.8); border: 1px solid #4a3018;
+            padding: 2rem; border-radius: 4px; box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+        }
+        .custom-input {
+            width: 100%; padding: 1rem; margin-bottom: 1.5rem;
+            background: rgba(0,0,0,0.5); border: 1px solid #6b4c05;
+            color: #d4af37; font-family: inherit; font-size: 1.1rem;
+            border-radius: 2px; outline: none; transition: border-color 0.3s;
+        }
+        .custom-input:focus { border-color: #d4af37; box-shadow: 0 0 8px rgba(212, 175, 55, 0.3); }
+        .custom-input::placeholder { color: #555; }
+        
+        .user-profile-header {
+            text-align: center; margin-bottom: 2rem; padding: 2rem 0;
+            border-bottom: 1px dashed #4a3018;
+        }
+        .avatar-circle {
+            width: 5rem; height: 5rem; margin: 0 auto;
+            background: linear-gradient(135deg, #8b1d1d, #5a0e0e);
+            border: 2px solid #d4af37; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 2.5rem; font-weight: bold; color: #f4e8c1;
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">公道钟馗</div>
+        <div style="display: flex; gap: 10px;">
+            <button id="historyBtn" class="header-btn">问卦志</button>
+            <button id="userCenterBtn" class="header-btn" style="display: none;">个人中心</button>
+            <button id="loginRouteBtn" class="header-btn">登录/注册</button>
+        </div>
+    </header>
+
+    <div id="loginPage" class="page">
+        <button class="back-btn" onclick="showPage('homePage')">返回</button>
+        <h2 style="margin: 30px 0 50px 0; text-align: center; letter-spacing: 4px; color: #d4af37;">叩启法门</h2>
+        <div class="login-container">
+            <input type="text" id="usernameInput" class="custom-input" placeholder="输入尊号 (账号)">
+            <input type="password" id="passwordInput" class="custom-input" placeholder="输入法印 (密码)">
+            <div style="display: flex; gap: 15px; margin-top: 20px;">
+                <button onclick="handleLogin()" class="btn btn-primary" style="width: 100%; margin:0;">登堂入室</button>
+                <button onclick="handleRegister()" class="btn btn-secondary" style="width: 100%; margin:0;">结缘注册</button>
+            </div>
+            <p id="loginMessage" style="text-align: center; margin-top: 15px; color: #8b1d1d; height: 20px;"></p>
+        </div>
+    </div>
+
+    <div id="userCenterPage" class="page">
+        <button class="back-btn" onclick="showPage('homePage')">返回</button>
+        <div class="user-profile-header">
+            <div class="avatar-circle">道</div>
+            <h2 id="displayUsername" style="color: #d4af37; margin: 10px 0; letter-spacing: 2px;">道友</h2>
+            <p style="color: #a99a80; font-size: 0.9rem;">已结缘共探天机</p>
+        </div>
+        
+        <div class="user-menu">
+            <button class="btn btn-primary" onclick="showPage('historyPage')" style="width: 80%; margin: 10px auto;">我的问卦志</button>
+            <button class="btn btn-secondary" onclick="handleLogout()" style="width: 80%; margin: 10px auto; border-color: #8b1d1d; color: #8b1d1d;">退出法门</button>
+        </div>
+    </div>
+
+    <div id="homePage" class="page active">
+        <h1 class="brand-title">公道钟馗</h1>
+        <p class="brand-slogan">持正守道 · 决疑解惑</p>
+        <button id="startDrawBtn" class="btn btn-primary" onclick="setMode('click')">诚心掷筊 (点击)</button>
+        <button id="startGestureDrawBtn" class="btn btn-gesture" onclick="setMode('gesture')">凌空演卦 (手势)</button>
+        <button id="historyBtn2" class="btn btn-secondary">翻阅卦志</button>
+    </div>
+
+    <div id="drawPage" class="page">
+        <button id="backFromDrawBtn" class="back-btn">返回</button>
+        <h2 style="margin: 30px 0; text-align: center; letter-spacing: 4px; color: #d4af37;">金钱演卦 · 问卜天机</h2>
+
+        <div id="gestureContainer">
+            <video id="gestureVideo" style="display: none;" playsinline></video>
+            <canvas id="gestureCanvas" width="320" height="240"></canvas>
+            <div id="gestureHint">法眼将启，请稍候...</div>
+        </div>
+
+        <div id="questionSelectionStage">
+            <div class="question-hint">
+                <p class="hint-title">【 司命谕旨 】</p>
+                <p class="hint-text">心诚则灵，一事一问。<br>不问非分之财，不卜未定之期。</p>
+            </div>
+            <div class="question-categories" id="questionCategories"></div>
+            <div class="question-list" id="questionList"></div>
+            <div class="selected-question" id="selectedQuestion">
+                <p class="selected-label">所问何事：</p>
+                <p class="selected-text" id="selectedQuestionText"></p>
+            </div>
+            <button id="startTossBtn" class="btn btn-primary" disabled>起卦</button>
+        </div>
+
+        <div id="clickStage" style="display: none;">
+            <div class="tortoise-container" id="tortoiseStage">
+                <div class="tortoise-shell" id="tortoiseShell">
+                    <div class="tortoise-pattern"></div>
+                    <div class="tortoise-center"></div>
+                </div>
+                <p id="tortoiseClickHint" style="text-align: center; margin-top: 20px; color: #a99a80; font-size: 16px; letter-spacing: 2px;">轻触灵龟，感应天机</p>
+            </div>
+
+            <div id="coinsStage" style="display: none;">
+                <p style="text-align: center; margin-bottom: 20px; color: #d4af37; font-size: 18px; letter-spacing: 2px;">第 <span id="throwCount">0</span> / 6 掷</p>
+                <div class="coins-container-three">
+                    <div class="coin" id="coin1"></div>
+                    <div class="coin" id="coin2"></div>
+                    <div class="coin" id="coin3"></div>
+                </div>
+                <button id="tossBtn" class="btn btn-primary" style="margin-top: 40px; width: 12rem;">掷钱</button>
+                <div id="currentThrowResult" style="margin-top: 30px; display: none;">
+                    <p style="text-align: center; margin-bottom: 15px; color: #a99a80; font-size: 16px; letter-spacing: 1px;">此掷阴阳</p>
+                    <div class="result-row">
+                        <div class="result-item" id="currentResult1"></div>
+                        <div class="result-item" id="currentResult2"></div>
+                        <div class="result-item" id="currentResult3"></div>
+                    </div>
+                    <p style="text-align: center; margin-top: 15px; font-size: 20px; font-weight: bold; letter-spacing: 4px;" id="yaoResult"></p>
+                </div>
+            </div>
+        </div>
+
+        <div id="hexagramStage" style="display: none; margin-top: 40px;">
+            <p style="text-align: center; margin-bottom: 20px; color: #d4af37; font-size: 18px; letter-spacing: 2px;">【 卦象凝结 】</p>
+            <div class="hexagram-container">
+                <div class="yao-row" id="yao5"><div class="yao-label">上爻</div><div class="yao-cell"><div class="yao-symbol yao-empty"></div><span class="dong-indicator"></span></div></div>
+                <div class="yao-row" id="yao4"><div class="yao-label">五爻</div><div class="yao-cell"><div class="yao-symbol yao-empty"></div><span class="dong-indicator"></span></div></div>
+                <div class="yao-row" id="yao3"><div class="yao-label">四爻</div><div class="yao-cell"><div class="yao-symbol yao-empty"></div><span class="dong-indicator"></span></div></div>
+                <div class="yao-row" id="yao2"><div class="yao-label">三爻</div><div class="yao-cell"><div class="yao-symbol yao-empty"></div><span class="dong-indicator"></span></div></div>
+                <div class="yao-row" id="yao1"><div class="yao-label">二爻</div><div class="yao-cell"><div class="yao-symbol yao-empty"></div><span class="dong-indicator"></span></div></div>
+                <div class="yao-row" id="yao0"><div class="yao-label">初爻</div><div class="yao-cell"><div class="yao-symbol yao-empty"></div><span class="dong-indicator"></span></div></div>
+            </div>
+        </div>
+    </div>
+
+    <canvas id="magicCanvas"></canvas>
+    
+    <div id="silentGestureHint">灵气感应中：拇指食指开合可缩放卡牌</div>
+
+    <div id="resultPage" class="page">
+        <div class="result-header">
+            <button id="backFromResultBtn" class="back-btn">返回</button>
+            <div class="question-hint" id="resultQuestionHint">
+                <p class="hint-title" style="margin-bottom: 5px;">【 断卦旨要 】</p>
+                <p class="hint-text" id="resultQuestionText" style="font-size: 1.1rem; color: #f4e8c1;"></p>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="gua-card-pair main-gua-pair">
+                <div class="card-placeholder main-card" id="mainCardContainer">
+                    <img id="mainCardImage" src="cards/卡片.png" alt="本卦卡牌" onerror="this.src='卡片.png'" />
+                    <div class="card-label">本卦</div>
+                </div>
+                <div class="gua-section main-gua">
+                    <div class="gua-header">
+                        <span class="gua-label">本卦</span>
+                        <span class="gua-name" id="mainGuaName">乾卦</span>
+                    </div>
+                    <div class="hexagram-container" id="mainYaoDisplay">
+                        <div class="yao-row"><div class="yao-label">上爻</div><div class="yao-cell"><div class="yao-symbol yao-yang"></div><span class="dong-indicator"></span></div></div>
+                        <div class="yao-row"><div class="yao-label">五爻</div><div class="yao-cell"><div class="yao-symbol yao-yang"></div><span class="dong-indicator"></span></div></div>
+                        <div class="yao-row"><div class="yao-label">四爻</div><div class="yao-cell"><div class="yao-symbol yao-yang"></div><span class="dong-indicator"></span></div></div>
+                        <div class="yao-row"><div class="yao-label">三爻</div><div class="yao-cell"><div class="yao-symbol yao-yang"></div><span class="dong-indicator"></span></div></div>
+                        <div class="yao-row"><div class="yao-label">二爻</div><div class="yao-cell"><div class="yao-symbol yao-yang"></div><span class="dong-indicator"></span></div></div>
+                        <div class="yao-row"><div class="yao-label">初爻</div><div class="yao-cell"><div class="yao-symbol yao-yang"></div><span class="dong-indicator"></span></div></div>
+                    </div>
+                    <div class="gua-text" id="mainGuaText">元亨，利贞。</div>
+                </div>
+            </div>
+            
+            <div class="gua-card-pair changed-gua-pair" id="changedGuaPair" style="display: none;">
+                <div class="card-placeholder changed-card" id="changedCardContainer">
+                    <img id="changedCardImage" src="cards/卡片.png" alt="变卦卡牌" onerror="this.src='卡片.png'" />
+                    <div class="card-label">变卦</div>
+                </div>
+                <div class="gua-section" id="changedGuaSection">
+                    <div class="gua-header">
+                        <span class="gua-label">变卦</span>
+                        <span class="gua-name" id="changedGuaName">乾卦</span>
+                    </div>
+                    <div class="hexagram-container" id="changedYaoDisplay">
+                        <div class="yao-row"><div class="yao-label">上爻</div><div class="yao-cell"><div class="yao-symbol yao-yang"></div><span class="dong-indicator"></span></div></div>
+                        <div class="yao-row"><div class="yao-label">五爻</div><div class="yao-cell"><div class="yao-symbol yao-yang"></div><span class="dong-indicator"></span></div></div>
+                        <div class="yao-row"><div class="yao-label">四爻</div><div class="yao-cell"><div class="yao-symbol yao-yang"></div><span class="dong-indicator"></span></div></div>
+                        <div class="yao-row"><div class="yao-label">三爻</div><div class="yao-cell"><div class="yao-symbol yao-yang"></div><span class="dong-indicator"></span></div></div>
+                        <div class="yao-row"><div class="yao-label">二爻</div><div class="yao-cell"><div class="yao-symbol yao-yang"></div><span class="dong-indicator"></span></div></div>
+                        <div class="yao-row"><div class="yao-label">初爻</div><div class="yao-cell"><div class="yao-symbol yao-yang"></div><span class="dong-indicator"></span></div></div>
+                    </div>
+                    <div class="gua-text" id="changedGuaText"></div>
+                </div>
+            </div>
+        </div>
+            
+        <div class="dongyao-info" id="dongyaoInfo" style="display: none;">
+            <p>【 动爻机变 】 <span id="dongyaoText"></span></p>
+        </div>
+
+        <div class="card-analysis-box">
+            <div class="analysis-header">
+                <span class="analysis-title">判词详解</span>
+            </div>
+            <div class="analysis-content" id="cardAnalysis">卦象解读内容</div>
+        </div>
+
+        <div class="result-buttons">
+            <button id="drawAgainBtn" class="btn btn-primary">另起一卦</button>
+            <button id="shareBtn" class="btn btn-secondary">请符分享</button>
+        </div>
+    </div>
+
+    <div id="historyPage" class="page">
+        <button id="backFromHistoryBtn" class="back-btn">返回</button>
+        <h2 class="history-title">卦象纪事</h2>
+        <ul class="history-list" id="historyList">
+            <li style="text-align: center; color: rgba(255,255,255,0.5); padding: 40px;">法卷空白，暂无所录</li>
+        </ul>
+        <button id="clearHistoryBtn" class="clear-history-btn">焚毁此卷</button>
+        <button id="backToHomeBtn" class="btn btn-secondary" style="width:14rem;">回归本山</button>
+    </div>
+
+    <div class="modal-overlay" id="modal">
+        <div class="modal-content">
+            <div class="modal-title" id="modalTitle">天机提示</div>
+            <div class="modal-message" id="modalMessage" style="margin:20px 0; color:#c9bda5; text-align:center;">确定要执行此操作吗？</div>
+            <div class="modal-buttons" style="display:flex; justify-content:center; gap:20px;">
+                <button id="modalCancel" class="modal-btn cancel" style="padding:10px 20px; background:transparent;">三思</button>
+                <button id="modalConfirm" class="modal-btn confirm" style="padding:10px 20px;">定夺</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="wechatUnlockModal">
+        <div class="modal-content" style="max-width: 32rem; width: 92%;">
+            <div class="modal-title" style="color: #d4af37; font-size: 1.4rem;">【 结缘公道 · 开启无限机缘 】</div>
+            <div style="color: #e5d3b3; font-size: 1.05rem; line-height: 1.8; margin: 1.5rem 0; text-align: justify;">
+                道友，单次试玩法力已尽。<br><br>
+                扫码添加官方司命微信，不仅可解锁<span style="color:#d4af37; font-weight:bold;">无限次演卦机缘</span>，更可优先获取琴澳文旅深度融合的专属资讯，以及“公道钟馗”IP系列数字资产（Web3专属权益）的空投白名单与最新政策红利。
+            </div>
+            <div style="text-align: center; margin: 1.5rem 0;">
+                <img src="企业微信.jpg" alt="官方微信" style="width: 12rem; height: 12rem; border: 2px solid #d4af37; border-radius: 4px; object-fit: cover;" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'100\' height=\'100\'><rect width=\'100\' height=\'100\' fill=\'#333\'/><text x=\'50\' y=\'50\' fill=\'#d4af37\' text-anchor=\'middle\' alignment-baseline=\'middle\'>官方微信</text></svg>'">
+            </div>
+            <div style="text-align: center;">
+                <button onclick="handleVerifyWeChat()" class="btn btn-primary" style="width: 100%; margin: 0;">我已结缘 (完成添加)</button>
+                <button onclick="document.getElementById('wechatUnlockModal').classList.remove('active')" class="modal-btn cancel" style="margin-top: 1rem; padding: 8px 24px; font-size: 1rem; width: 100%; border:none; background:transparent;">暂不结缘</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="shareModal">
+        <div class="modal-content" style="max-width: 38rem; width: 92%;">
+            <div class="modal-title" style="color: #d4af37; font-size: 1.4rem;">【 结缘传道 · 请符分享 】</div>
+            <p style="text-align: center; color: #a99a80; font-size: 0.95rem; margin-top: 0.5rem;">扫描法印二维码，寻觅钟馗法脉之音</p>
+            
+            <div class="qr-grid">
+                <div class="qr-card">
+                    <img src="小红书.jpg" alt="小红书" onerror="this.style.display='none';">
+                    <div class="qr-name">小红书</div>
+                    <div class="qr-id">26850371007</div>
+                </div>
+                <div class="qr-card">
+                    <img src="抖音.png" alt="抖音" onerror="this.style.display='none';">
+                    <div class="qr-name">抖音</div>
+                    <div class="qr-id">42895669638</div>
+                </div>
+                <div class="qr-card">
+                    <img src="推特.png" alt="X" onerror="this.style.display='none';">
+                    <div class="qr-name">X</div>
+                    <div class="qr-id">@gongdaozhongkui</div>
+                </div>
+                <div class="qr-card">
+                    <img src="企业微信.jpg" alt="企业微信" onerror="this.style.display='none';">
+                    <div class="qr-name">企业微信</div>
+                    <div class="qr-id">公道 · 钟馗</div>
+                </div>
+            </div>
+
+            <div style="text-align: center;">
+                <button id="shareModalClose" class="modal-btn cancel" style="padding: 8px 24px; font-size: 1rem;">闭合本卷</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* ================= 模式选择和手势追踪控制变量 ================= */
+        let currentInteractionMode = 'click'; // 'click' 或 'gesture'
+        let gestureState = 'idle'; // 'idle', 'shake', 'toss', 'sword', 'result_zoom'
+        let mpCamera = null;
+        let mpHands = null;
+        let gestureCooldown = false;
+        let wristHistory = [];
+        let isFistDetected = false; 
+
+        // 试玩与转化追踪状态
+        let hasUsedTrial = localStorage.getItem('zhongkuiHasUsedTrial') === 'true';
+
+        // 平滑缩放算法使用的 EMA 变量
+        let currentCardScale = 1.0;
+        let targetCardScale = 1.0;
+
+        function setMode(mode) {
+            currentInteractionMode = mode;
+            resetDrawState();
+            showPage('drawPage');
+        }
+
+        /* ================= 卦象数据区 ================= */
+        const STANDARD_GUA = [
+            { index: 1, name: "乾为天", sequence: [1,1,1,1,1,1], text: "元亨利贞", comment: "刚健中正，诸事顺遂，宜积极进取、坚守正道", imagePath: "工厂2.0/1.png" },
+            { index: 2, name: "坤为地", sequence: [0,0,0,0,0,0], text: "元亨，利牝马之贞", comment: "柔顺包容，顺势而为，以柔克刚、稳守根基", imagePath: "工厂2.0/2.png" },
+            { index: 3, name: "水雷屯", sequence: [1,0,0,0,1,0], text: "元亨利贞，勿用有攸往，利建侯", comment: "艰难起步，先立根基，不宜冒进、静待时机", imagePath: "工厂2.0/3.png" },
+            { index: 4, name: "山水蒙", sequence: [0,1,0,0,0,1], text: "亨，匪我求童蒙，童蒙求我", comment: "虚心求教，主动学习，谦逊受益、不可被动", imagePath: "工厂2.0/4.png" },
+            { index: 5, name: "水天需", sequence: [1,1,1,0,1,0], text: "有孚，光亨，贞吉，利涉大川", comment: "耐心等待，厚积薄发，诚信致胜、静待良机", imagePath: "工厂2.0/5.png" },
+            { index: 6, name: "天水讼", sequence: [0,1,0,1,1,1], text: "有孚，窒惕，中吉，终凶", comment: "避免争执，以和为贵，警惕风险、不可硬争", imagePath: "工厂2.0/6.png" },
+            { index: 7, name: "地水师", sequence: [0,1,0,0,0,0], text: "贞，丈人吉，无咎", comment: "团队协作，任贤用能，稳扎稳打、凝聚人心", imagePath: "工厂2.0/7.png" },
+            { index: 8, name: "水地比", sequence: [0,0,0,0,1,0], text: "吉，原筮元永贞，无咎", comment: "亲近贤良，真诚待人，得人相助、坚守本心", imagePath: "工厂2.0/8.png" },
+            { index: 9, name: "风天小畜", sequence:[1,1,1,0,1,1], text: "亨，密云不雨，自我西郊", comment: "积蓄力量，小步积累，不宜强求、静待时机", imagePath: "工厂2.0/9.png" },
+            { index: 10, name: "天泽履", sequence: [1,1,0,1,1,1], text: "履虎尾，不咥人，亨", comment: "谨慎行事，守礼避祸，化险为夷、步步为营", imagePath: "工厂2.0/10.png" },
+            { index: 11, name: "地天泰", sequence: [1,1,1,0,0,0], text: "小往大来，吉，亨", comment: "顺境通达，居安思危，积极进取、顺势而为", imagePath: "工厂2.0/11.png" },
+            { index: 12, name: "天地否", sequence: [0,0,0,1,1,1], text: "否之匪人，不利君子贞，大往小来", comment: "闭塞不通，低调守正，静待转机、不可冒进", imagePath: "工厂2.0/12.png" },
+            { index: 13, name: "天地同人", sequence:[1,0,1,1,1,1], text: "同人于野，亨，利涉大川，利君子贞", comment: "志同道合，携手共进，同心破难、坚守正道", imagePath: "工厂2.0/13.png" },
+            { index: 14, name: "火天大有", sequence:[1,1,1,1,0,1], text: "元亨", comment: "盛大富有，守成持正，戒骄戒躁、长久稳固", imagePath: "工厂2.0/14.png" },
+            { index: 15, name: "地山谦", sequence: [0,0,1,0,0,0], text: "亨，君子有终", comment: "谦逊低调，汇聚福气，终获善终、谦卑受益", imagePath: "工厂2.0/15.png" },
+            { index: 16, name: "雷地豫", sequence: [0,0,0,1,0,0], text: "利建侯行师", comment: "顺势安乐，建功立业，戒逸戒怠、顺势而为", imagePath: "工厂2.0/16.png" },
+            { index: 17, name: "泽雷随", sequence: [1,0,0,1,1,0], text: "元亨利贞，无咎", comment: "顺势而为，从善如流，坚守正道、灵活应变", imagePath: "工厂2.0/17.png" },
+            { index: 18, name: "山风蛊", sequence: [0,1,1,0,0,1], text: "元亨，利涉大川，先甲三日，后甲三日", comment: "革旧迎新，提前规划，事后复盘、革新成事", imagePath: "工厂2.0/18.png" },
+            { index: 19, name: "地泽临", sequence: [1,1,0,0,0,0], text: "元亨利贞，至于八月有凶", comment: "积极进取，警惕物极必反、把握分寸", imagePath: "工厂2.0/19.png" },
+            { index: 20, name: "风地观", sequence: [0,0,0,0,1,1], text: "盥而不荐，有孚颙若", comment: "冷静观察，审时度势，不盲动、先明真相", imagePath: "工厂2.0/20.png" },
+            { index: 21, name: "火雷噬嗑", sequence: [1,0,0,1,0,1], text: "亨，利用狱", comment: "果断决断，扫清障碍，公正处事、果断破局", imagePath: "工厂2.0/21.png" },
+            { index: 22, name: "山火贲", sequence: [1,0,1,0,0,1], text: "亨，小利有攸往", comment: "注重内涵，适度修饰，不华不实、内外兼修", imagePath: "工厂2.0/22.png" },
+            { index: 23, name: "山地剥", sequence: [0,0,0,0,0,1], text: "不利有攸往", comment: "衰败守成，保全自身，静待转机、不可冒进", imagePath: "工厂2.0/23.png" },
+            { index: 24, name: "地雷复", sequence: [1,0,0,0,0,0], text: "亨，出入无疾，朋来无咎", comment: "否极泰来，修正错误，重新开始、回归正道", imagePath: "工厂2.0/24.png" },
+            { index: 25, name: "天雷无妄", sequence: [1,0,0,1,1,1], text: "元亨利贞，其匪正有眚，不利有攸往", comment: "顺其自然，不存妄念，坚守本心、不可妄为", imagePath: "工厂2.0/25.png" },
+            { index: 26, name: "山天大畜", sequence: [1,1,1,0,0,1], text: "利贞，不家食吉，利涉大川", comment: "厚积薄发，积蓄力量，渡难关、厚积薄发", imagePath: "工厂2.0/26.png" },
+            { index: 27, name: "山雷颐", sequence: [1,0,0,0,0,1], text: "贞吉，观颐，自求口实", comment: "自力更生，修养身心，自给自足、长久安康", imagePath: "工厂2.0/27.png" },
+            { index: 28, name: "泽风大过", sequence: [0,1,1,1,1,0], text: "栋桡，利有攸往，亨", comment: "非常之举，把握分寸，险中求胜、不可过度", imagePath: "工厂2.0/28.png" },
+            { index: 29, name: "坎为水", sequence: [0,1,0,0,1,0], text: "习坎，有孚维心亨，行有尚", comment: "坚守信念，步步为营，险中求存、终得助力", imagePath: "工厂2.0/29.png" },
+            { index: 30, name: "离为火", sequence: [1,0,1,1,0,1], text: "利贞，亨，畜牝牛吉", comment: "依附光明，柔顺中正，温暖助力、顺势而生", imagePath: "工厂2.0/30.png" },
+            { index: 31, name: "泽山咸", sequence: [0,0,1,1,1,0], text: "亨，利贞，取女吉", comment: "心意相通，真诚相待，顺其自然、情投意合", imagePath: "工厂2.0/31.png" },
+            { index: 32, name: "雷风恒", sequence: [0,1,1,1,0,0], text: "亨，无咎，利贞，利有攸往", comment: "持之以恒，坚守原则，长久之道、终有所成", imagePath: "工厂2.0/32.png" },
+            { index: 33, name: "天山遁", sequence: [0,0,1,1,1,1], text: "亨，小利贞", comment: "适时退避，保全自身，以退为进、避祸求安", imagePath: "工厂2.0/33.png" },
+            { index: 34, name: "雷天大壮", sequence: [1,1,1,1,0,0], text: "利贞", comment: "刚健强盛，中正行事，戒刚戒猛、持正守成", imagePath: "工厂2.0/34.png" },
+            { index: 35, name: "火地晋", sequence: [0,0,0,1,0,1], text: "康侯用锡马蕃庶，昼日三接", comment: "步步高升，积极进取，展露才华、前途光明", imagePath: "工厂2.0/35.png" },
+            { index: 36, name: "地火明夷", sequence: [1,0,1,0,0,0], text: "利艰贞", comment: "隐锋芒，守正待时，低调隐忍、静待时机", imagePath: "工厂2.0/36.png" },
+            { index: 37, name: "风火家人", sequence: [1,0,1,0,1,1], text: "利女贞", comment: "家庭和睦，各司其职，家和万事、秩序井然", imagePath: "工厂2.0/37.png" },
+            { index: 38, name: "火泽睽", sequence: [1,1,0,1,0,1], text: "小事吉", comment: "求同存异，包容差异，避免冲突、小事可为", imagePath: "工厂2.0/38.png" },
+            { index: 39, name: "水山蹇", sequence: [0,0,1,0,1,0], text: "利西南，不利东北，利见大人，贞吉", comment: "寻求助力，顺势而为，共渡难关、贵人相助", imagePath: "工厂2.0/39.png" },
+            { index: 40, name: "雷水解", sequence: [0,1,0,1,0,0], text: "利西南，无所往，其来复吉，有攸往，夙吉", comment: "解除困境，顺势而为，放下包袱、及早行动", imagePath: "工厂2.0/40.png" },
+            { index: 41, name: "山泽损", sequence: [1,1,0,0,0,1], text: "有孚，元吉，无咎，可贞，利有攸往", comment: "舍小利，成大事，损己利人、小舍大得", imagePath: "工厂2.0/41.png" },
+            { index: 42, name: "风雷益", sequence: [1,0,0,0,1,1], text: "利有攸往，利涉大川", comment: "互相助力，合作共赢，积极进取、得人相助", imagePath: "工厂2.0/42.png" },
+            { index: 43, name: "泽天夬", sequence: [1,1,1,1,1,0], text: "扬于王庭，孚号，有厉，告自邑，不利即戎，利有攸往", comment: "果断除患，公开决断，戒冲动、果断行事", imagePath: "工厂2.0/43.png" },
+            { index: 44, name: "天风姤", sequence: [0,1,1,1,1,1], text: "女壮，勿用取女", comment: "警惕邂逅，保持清醒，防小人、不可轻信", imagePath: "工厂2.0/44.png" },
+            { index: 45, name: "泽地萃", sequence: [0,0,0,1,1,0], text: "亨，王假有庙，利见大人，亨，利贞，用大牲吉，利有攸往", comment: "同心协力，聚众成事，敬贤礼、凝聚人心", imagePath: "工厂2.0/45.png" },
+            { index: 46, name: "地风升", sequence: [0,1,1,0,0,0], text: "元亨，用见大人，勿恤，南征吉", comment: "稳步上升，寻求助力，步步高升、顺势而为", imagePath: "工厂2.0/46.png" },
+            { index: 47, name: "泽水困", sequence: [0,1,0,1,1,0], text: "亨，贞，大人吉，无咎，有言不信", comment: "坚守本心，静待转机，不辩解、守正待时", imagePath: "工厂2.0/47.png" },
+            { index: 48, name: "水风井", sequence: [0,1,1,0,1,0], text: "改邑不改井，无丧无得，往来井井", comment: "坚守价值，持续奉献，不变初心、长久稳固", imagePath: "工厂2.0/48.png" },
+            { index: 49, name: "泽火革", sequence: [1,0,1,1,1,0], text: "巳日乃孚，元亨利贞，悔亡", comment: "革旧迎新，先信后动，顺势变革、革新成事", imagePath: "工厂2.0/49.png" },
+            { index: 50, name: "火风鼎", sequence: [0,1,1,1,0,1], text: "元吉，亨", comment: "革故鼎新，稳重成事，基业稳固、长久兴盛", imagePath: "工厂2.0/50.png" },
+            { index: 51, name: "震为雷", sequence: [1,0,0,1,0,0], text: "亨，震来虩虩，笑言哑哑，震惊百里，不丧匕鬯", comment: "临危不乱，镇定应变，化险为夷、稳如泰山", imagePath: "工厂2.0/51.png" },
+            { index: 52, name: "艮为山", sequence: [0,0,1,0,0,1], text: "艮其背，不获其身，行其庭，不见其人，无咎", comment: "适时止欲，专注当下，不被干扰、心无旁骛", imagePath: "工厂2.0/52.png" },
+            { index: 53, name: "风山渐", sequence: [0,0,1,0,1,1], text: "女归吉，利贞", comment: "循序渐进，按部就班，水到渠成、不可急躁", imagePath: "工厂2.0/53.png" },
+            { index: 54, name: "雷泽归妹", sequence: [1,1,0,1,0,0], text: "征凶，无攸利", comment: "顺其自然，不强求，戒急躁、顺其自然", imagePath: "工厂2.0/54.png" },
+            { index: 55, name: "雷火丰", sequence: [1,0,1,1,0,0], text: "亨，王假之，勿忧，宜日中", comment: "鼎盛时期，居安思危、防衰败", imagePath: "工厂2.0/55.png" },
+            { index: 56, name: "火山旅", sequence: [0,0,1,1,0,1], text: "小亨，旅贞吉", comment: "随遇而安，低调守正，戒争执、漂泊自安", imagePath: "工厂2.0/56.png" },
+            { index: 57, name: "巽为风", sequence: [0,1,1,0,1,1], text: "小亨，利有攸往，利见大人", comment: "谦逊顺势，借力而行，戒固执、顺势而为", imagePath: "工厂2.0/57.png" },
+            { index: 58, name: "兑为泽", sequence: [1,1,0,1,1,0], text: "亨，利贞", comment: "和悦待人，真诚交流，结善缘、快乐顺遂", imagePath: "工厂2.0/58.png" },
+            { index: 59, name: "风水涣", sequence: [0,1,0,0,1,1], text: "亨，王假有庙，利涉大川，利贞", comment: "化解隔阂，凝聚人心，渡难关、消除疑虑", imagePath: "工厂2.0/59.png" },
+            { index: 60, name: "水泽节", sequence: [1,1,0,0,1,0], text: "亨，苦节不可贞", comment: "适度节制，不苛求，不放纵、把握分寸", imagePath: "工厂2.0/60.png" },
+            { index: 61, name: "风泽中孚", sequence: [1,1,0,0,1,1], text: "豚鱼吉，利涉大川，利贞", comment: "真诚守信，表里如一，得人心、感动他人", imagePath: "工厂2.0/61.png" },
+            { index: 62, name: "雷山小过", sequence: [0,0,1,1,0,0], text: "亨，利贞，可小事，不可大事", comment: "谨慎小事，不贪大，戒冒进、小心行事", imagePath: "工厂2.0/62.png" },
+            { index: 63, name: "水火既济", sequence: [1,0,1,0,1,0], text: "亨小，利贞，初吉终乱", comment: "功成守心，防懈怠、不忘初心", imagePath: "工厂2.0/63.png" },
+            { index: 64, name: "火水未济", sequence: [0,1,0,1,0,1], text: "亨，小狐汔济，濡其尾，无攸利", comment: "坚持到底，慎终如始、不可半途而废", imagePath: "工厂2.0/64.png" }
+        ];
+
+        function findGuaName(yaoArray) {
+            for (let i = 0; i < STANDARD_GUA.length; i++) {
+                let match = true;
+                for (let j = 0; j < 6; j++) {
+                    const inputType = yaoArray[j].type === 'yang' ? 1 : 0;
+                    const standardType = STANDARD_GUA[i].sequence[j];
+                    if (inputType !== standardType) { match = false; break; }
+                }
+                if (match) return STANDARD_GUA[i].name;
+            }
+            return '未济卦';
+        }
+
+        function generateChangedYao(mainYaoArray) {
+            return mainYaoArray.map(yao => {
+                if (yao.isDong) return { type: yao.type === 'yang' ? 'yin' : 'yang', isDong: false };
+                return { type: yao.type, isDong: false };
+            });
+        }
+
+        const SIXTY_FOUR_GUA = STANDARD_GUA.map(gua => ({ ...gua, originalText: gua.text })); 
+
+        /* ================= 问题库 ================= */
+        const QUESTION_LIBRARY = {
+            '诚心一问': [],
+            '事业前程': ['近期前程气运如何？', '所谋之事能否顺遂？', '是否宜动（转换门庭）？', '同袍关系如何化解？'],
+            '财气运势': ['近期财禄如何？', '此番营利是否可为？', '何日可见财星高照？', '求财当往何方？'],
+            '姻缘桃花': ['近期红鸾星动否？', '能否结识良缘？', '当前姻缘能否长久定局？', '婚姻迷局如何破解？'],
+            '科举学业': ['近期文昌星运如何？', '科举（考试）能否金榜题名？', '心性浮躁如何定慧？', '当向何门求学？'],
+            '健康平安': ['近期寿康之气如何？', '身上沉疴当需防范何处？', '家宅可得安康？', '远行是否平顺无虞？'],
+            '寻人寻物': ['遗失之物可否复得？', '当向何方寻觅？', '何日可有音讯？', '走失之人能否安返？'],
+            '家宅吉凶': ['家宅近期气象如何？', '六亲关系是否和顺？', '高堂健康能否无忧？', '家中庶务是否通达？']
+        };
+
+        let selectedQuestion = null;
+        let selectedCategory = null;
+        let throwCount = 0;
+        let yaoResults = [];
+        let drawHistory = [];
+
+        /* ================= 账号与数据管理 ================= */
+        let currentUser = null; 
+        let usersDB = {}; 
+
+        function loadData() {
+            const savedDB = localStorage.getItem('zhongkuiUsersDB');
+            if (savedDB) { usersDB = JSON.parse(savedDB); }
+            
+            const savedSession = localStorage.getItem('zhongkuiCurrentSession');
+            if (savedSession && usersDB[savedSession]) {
+                currentUser = savedSession;
+                drawHistory = usersDB[currentUser].history || [];
+                updateAuthUI();
+            } else {
+                drawHistory = []; // 未登录时为游客历史
+            }
+        }
+
+        function saveData() { 
+            if (currentUser) {
+                usersDB[currentUser].history = drawHistory;
+                localStorage.setItem('zhongkuiUsersDB', JSON.stringify(usersDB));
+            } else {
+                localStorage.setItem('zhongkuiGuestHistory', JSON.stringify({ history: drawHistory }));
+            }
+        }
+
+        function updateAuthUI() {
+            const loginBtn = document.getElementById('loginRouteBtn');
+            const userCenterBtn = document.getElementById('userCenterBtn');
+            if (currentUser) {
+                loginBtn.style.display = 'none';
+                userCenterBtn.style.display = 'block';
+                document.getElementById('displayUsername').textContent = currentUser;
+            } else {
+                loginBtn.style.display = 'block';
+                userCenterBtn.style.display = 'none';
+            }
+        }
+
+        function handleLogin() {
+            const user = document.getElementById('usernameInput').value.trim();
+            const pass = document.getElementById('passwordInput').value;
+            const msg = document.getElementById('loginMessage');
+            
+            if (!user || !pass) { msg.textContent = "账号法印不可为空"; return; }
+            if (!usersDB[user]) { msg.textContent = "查无此尊号，请先结缘注册"; return; }
+            if (usersDB[user].password !== pass) { msg.textContent = "法印错误，难启法门"; return; }
+            
+            currentUser = user;
+            drawHistory = usersDB[user].history || [];
+            localStorage.setItem('zhongkuiCurrentSession', user);
+            
+            document.getElementById('usernameInput').value = '';
+            document.getElementById('passwordInput').value = '';
+            msg.textContent = '';
+            
+            updateAuthUI();
+            showPage('userCenterPage');
+        }
+
+        function handleRegister() {
+            const user = document.getElementById('usernameInput').value.trim();
+            const pass = document.getElementById('passwordInput').value;
+            const msg = document.getElementById('loginMessage');
+            
+            if (!user || !pass) { msg.textContent = "账号法印不可为空"; return; }
+            if (usersDB[user]) { msg.textContent = "此尊号已被占用"; return; }
+            
+            // 注册时默认 hasAddedWeChat 为 false
+            usersDB[user] = { password: pass, history: [], hasAddedWeChat: false };
+            localStorage.setItem('zhongkuiUsersDB', JSON.stringify(usersDB));
+            msg.style.color = '#d4af37';
+            msg.textContent = "结缘成功，请登堂入室";
+        }
+
+        function handleLogout() {
+            currentUser = null;
+            drawHistory = [];
+            localStorage.removeItem('zhongkuiCurrentSession');
+            updateAuthUI();
+            showPage('homePage');
+        }
+
+        /* ================= 商业化：添加官方微信验证 ================= */
+        function handleVerifyWeChat() {
+            if(currentUser) {
+                if(!usersDB[currentUser]) return;
+                usersDB[currentUser].hasAddedWeChat = true;
+                saveData();
+                document.getElementById('wechatUnlockModal').classList.remove('active');
+                startDrawProcess(); // 验证成功后直接进入流程
+            }
+        }
+
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+        }
+
+        function showModal(title, message, confirmCallback) {
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalMessage').textContent = message;
+            document.getElementById('modal').classList.add('active');
+            document.getElementById('modalConfirm').onclick = () => {
+                document.getElementById('modal').classList.remove('active');
+                if (confirmCallback) confirmCallback();
+            };
+            document.getElementById('modalCancel').onclick = () => { document.getElementById('modal').classList.remove('active'); };
+        }
+
+        function judgeYao(coins) {
+            const backCount = coins.filter(c => !c).length;
+            if (backCount === 3) return { type: 'yin', isDong: true, name: '老阴' };
+            if (backCount === 0) return { type: 'yang', isDong: true, name: '老阳' };
+            if (backCount === 2) return { type: 'yang', isDong: false, name: '少阳' };
+            return { type: 'yin', isDong: false, name: '少阴' };
+        }
+
+        function calculateGuaFromYao(yaoArray) {
+            const guaName = findGuaName(yaoArray);
+            const guaIndex = STANDARD_GUA.findIndex(g => g.name === guaName);
+            return guaIndex !== -1 ? guaIndex : 0;
+        }
+
+        function getMainGua() {
+            if (yaoResults.length === 0) return SIXTY_FOUR_GUA[1];
+            const index = calculateGuaFromYao(yaoResults);
+            return SIXTY_FOUR_GUA[index] || SIXTY_FOUR_GUA[1];
+        }
+
+        function getDongYaoIndices() { return yaoResults.map((yao, i) => yao.isDong ? i : -1).filter(i => i !== -1); }
+
+        function generateGuaReading() {
+            const mainGua = getMainGua();
+            const changedGua = getChangedGua();
+            const dongYaoIndices = getDongYaoIndices();
+            const category = selectedCategory || '事业前程';
+            const question = selectedQuestion || '';
+
+            let interpretation = '';
+            const standardGua = STANDARD_GUA.find(g => g.name === mainGua.name);
+            const text = standardGua ? standardGua.text : mainGua.originalText || '';
+            const comment = standardGua ? standardGua.comment : '';
+
+            const yaoPositions = ['初爻', '二爻', '三爻', '四爻', '五爻', '上爻'];
+            const validDongYaoPositions = dongYaoIndices.map(i => yaoPositions[i]).filter(pos => pos);
+
+            if (dongYaoIndices.length === 0) {
+                interpretation = `<div class="gua-section"><div class="gua-title">【本卦：${mainGua.name}】</div><div class="gua-text-content">${text}</div><div class="gua-comment">${comment}</div><div class="gua-tip" style="color:#d4af37; border-top:1px dashed #6b4c05; padding-top:10px; margin-top:10px;">★ 司命批语：卦象沉稳无变，所问之事宜顺应天时，静待其成。</div></div>`;
+            } else {
+                let dongYaoText = validDongYaoPositions.length === 1 
+                    ? `<div class="dongyao-section"><div class="dongyao-title" style="color:#8b1d1d; font-size:1.1rem;">【${validDongYaoPositions[0]} 暗动】</div><div class="dongyao-content" style="color:#e5d3b3;">运势暗藏转机，需慧眼识时，顺势而为方免祸殃。</div></div>`
+                    : `<div class="dongyao-section"><div class="dongyao-title" style="color:#8b1d1d; font-size:1.1rem;">【群爻竞发】</div><div class="dongyao-content" style="color:#e5d3b3;">事态扑朔迷离，变数颇多，宜随机应变，切忌执念。</div></div>`;
+
+                interpretation = `<div class="gua-section"><div class="gua-title">【本卦：${mainGua.name}】</div><div class="gua-text-content">${text}</div><div class="gua-comment">${comment}</div></div>${dongYaoText}`;
+
+                if (changedGua) {
+                    const changedStandard = STANDARD_GUA.find(g => g.name === changedGua.name);
+                    const changedText = changedStandard ? changedStandard.text : changedGua.text || '';
+                    const changedComment = changedStandard ? changedStandard.comment : changedGua.comment || '';
+                    interpretation += `<div class="gua-section"><div class="gua-title">【变卦：${changedGua.name}】</div><div class="gua-text-content">${changedText}</div><div class="gua-comment">${changedComment}</div></div>`;
+                }
+            }
+
+            return { mainGua, changedGua, dongYaoIndices, interpretation };
+        }
+
+        function getChangedGua() {
+            const dongYaoIndices = getDongYaoIndices();
+            if (dongYaoIndices.length === 0) return null;
+            const changedYaoArray = generateChangedYao(yaoResults);
+            const changedGuaName = findGuaName(changedYaoArray);
+            return SIXTY_FOUR_GUA.find(g => g.name === changedGuaName) || null;
+        }
+
+        function displayGua(guaReading) {
+            const { mainGua, changedGua, dongYaoIndices } = guaReading;
+            const mainGuaName = findGuaName(yaoResults);
+            document.getElementById('mainGuaName').textContent = mainGuaName;
+
+            const hasChange = dongYaoIndices.length > 0 && changedGua;
+            const changedGuaPair = document.getElementById('changedGuaPair');
+            changedGuaPair.style.display = hasChange ? 'flex' : 'none';
+
+            const mainCardImage = document.getElementById('mainCardImage');
+            const changedCardImage = document.getElementById('changedCardImage');
+            
+            const mainGuaData = STANDARD_GUA.find(g => g.name === mainGuaName);
+            mainCardImage.src = mainGuaData && mainGuaData.imagePath ? mainGuaData.imagePath : 'cards/卡片.png';
+            
+            if (hasChange) {
+                const changedGuaData = STANDARD_GUA.find(g => g.name === changedGua.name);
+                changedCardImage.src = changedGuaData && changedGuaData.imagePath ? changedGuaData.imagePath : 'cards/卡片.png';
+            }
+
+            const mainText = guaReading.mainGua?.text || '';
+            const mainComment = guaReading.mainGua?.comment || '';
+            document.getElementById('mainGuaText').textContent = `${mainText}\n${mainComment}`;
+
+            const mainYaoDisplay = document.getElementById('mainYaoDisplay');
+            mainYaoDisplay.querySelectorAll('.yao-row').forEach((row, index) => {
+                const yaoSymbol = row.querySelector('.yao-symbol');
+                const dongIndicator = row.querySelector('.dong-indicator');
+                const yaoIndex = 5 - index; const yao = yaoResults[yaoIndex];
+                if (yao) {
+                    yaoSymbol.className = `yao-symbol yao-${yao.type}`;
+                    if (yao.isDong) {
+                        dongIndicator.className = `dong-indicator dong-${yao.type}`;
+                        dongIndicator.textContent = yao.type === 'yang' ? '○' : '×';
+                    } else { dongIndicator.className = 'dong-indicator'; dongIndicator.textContent = ''; }
+                }
+            });
+
+            const changedGuaSection = document.getElementById('changedGuaSection');
+            if (hasChange) {
+                changedGuaSection.style.display = 'block';
+                document.getElementById('changedGuaName').textContent = changedGua.name;
+                const changedStandardGua = STANDARD_GUA.find(g => g.name === changedGua.name);
+                const changedText = changedStandardGua ? changedStandardGua.text : '';
+                const changedComment = changedStandardGua ? changedStandardGua.comment : '';
+                document.getElementById('changedGuaText').textContent = `${changedText}\n${changedComment}`;
+
+                const changedYaoArray = generateChangedYao(yaoResults);
+                const changedYaoDisplay = document.getElementById('changedYaoDisplay');
+                changedYaoDisplay.querySelectorAll('.yao-row').forEach((row, index) => {
+                    const yaoSymbol = row.querySelector('.yao-symbol');
+                    const yaoIndex = 5 - index; const yao = changedYaoArray[yaoIndex];
+                    if (yao) yaoSymbol.className = `yao-symbol yao-${yao.type}`;
+                });
+            } else {
+                changedGuaSection.style.display = 'none';
+                document.getElementById('changedGuaName').textContent = '';
+                document.getElementById('changedGuaText').textContent = '';
+            }
+
+            const dongyaoInfo = document.getElementById('dongyaoInfo');
+            const positions = dongYaoIndices.map(i => ['初爻','二爻','三爻','四爻','五爻','上爻'][i]).join('、');
+            dongyaoInfo.style.display = positions ? 'block' : 'none';
+            document.getElementById('dongyaoText').textContent = positions ? `${positions} 显象` : '';
+        }
+
+        function showResult() {
+            const guaReading = generateGuaReading();
+            document.getElementById('resultQuestionText').textContent = selectedQuestion || '';
+            displayGua(guaReading);
+            document.getElementById('cardAnalysis').innerHTML = guaReading.interpretation;
+            
+            drawHistory.unshift({
+                guaName: guaReading.mainGua.name, category: selectedCategory,
+                question: selectedQuestion, reading: guaReading.interpretation,
+                timestamp: new Date().toLocaleString('zh-CN'),
+                yaoResults: [...yaoResults], dongYaoIndices: guaReading.dongYaoIndices
+            });
+            if (drawHistory.length > 50) drawHistory = drawHistory.slice(0, 50);
+
+            // 核心：若为游客完成抽卡，记录已试玩
+            if (!currentUser) {
+                hasUsedTrial = true;
+                localStorage.setItem('zhongkuiHasUsedTrial', 'true');
+            }
+
+            saveData();
+            showPage('resultPage');
+            
+            if(currentInteractionMode === 'gesture') {
+                startMagicParticles();
+            }
+        }
+
+        function tossCoins() {
+            if (throwCount >= 6) return;
+
+            const tossBtn = document.getElementById('tossBtn');
+            if (tossBtn) tossBtn.disabled = true;
+            document.getElementById('currentThrowResult').style.display = 'none';
+            
+            setTimeout(() => {
+                const results = [Math.random() > 0.5, Math.random() > 0.5, Math.random() > 0.5];
+                const yao = judgeYao(results);
+                yaoResults.push(yao);
+                
+                const resultEls = ['currentResult1', 'currentResult2', 'currentResult3'];
+                resultEls.forEach((elId, idx) => {
+                    const el = document.getElementById(elId);
+                    el.textContent = ''; el.className = `result-item ${results[idx] ? 'front' : 'back'}`;
+                });
+                
+                document.getElementById('yaoResult').textContent = yao.name;
+                document.getElementById('yaoResult').style.color = yao.isDong ? '#d4af37' : '#c9bda5';
+                document.getElementById('currentThrowResult').style.display = 'block';
+                
+                const yaoCell = document.getElementById(`yao${throwCount}`);
+                if (yaoCell) {
+                    let yaoEl = yaoCell.querySelector('.yao-symbol');
+                    let indicatorEl = yaoCell.querySelector('.dong-indicator');
+                    yaoEl.className = `yao-symbol yao-${yao.type}`;
+                    if (yao.isDong) {
+                        indicatorEl.className = `dong-indicator dong-${yao.type}`;
+                        indicatorEl.textContent = yao.type === 'yang' ? '○' : '×';
+                    }
+                }
+                
+                throwCount++;
+                document.getElementById('throwCount').textContent = String(throwCount);
+                
+                if (throwCount >= 6) {
+                    setTimeout(() => {
+                        if (currentInteractionMode === 'gesture') {
+                            gestureState = 'sword';
+                            updateGestureHint('请捏剑指（食中二指并拢直立）以开法眼');
+                            document.getElementById('coinsStage').style.display = 'none';
+                        } else {
+                            document.getElementById('coinsStage').style.display = 'none';
+                            showResult();
+                        }
+                    }, 800);
+                } else {
+                    if (currentInteractionMode === 'gesture') {
+                        setTimeout(() => {
+                            if(gestureState === 'toss') updateGestureHint(`请握拳后张开，投掷金钱 (第 ${throwCount + 1} 掷)`);
+                        }, 500);
+                    }
+                    if (tossBtn) tossBtn.disabled = false; 
+                }
+            }, 500);
+        }
+
+        // 修改复原函数，将打开摄像头流程剥离
+        function resetDrawState() {
+            throwCount = 0; yaoResults = []; isFistDetected = false; wristHistory = [];
+            currentCardScale = 1.0; targetCardScale = 1.0;
+            
+            document.getElementById('questionSelectionStage').style.display = 'block';
+            document.getElementById('clickStage').style.display = 'none';
+            document.getElementById('coinsStage').style.display = 'none';
+            document.getElementById('tortoiseStage').style.display = 'none';
+            document.getElementById('hexagramStage').style.display = 'none';
+            document.getElementById('currentThrowResult').style.display = 'none';
+            document.getElementById('throwCount').textContent = '0';
+            document.getElementById('tortoiseClickHint').style.display = currentInteractionMode === 'gesture' ? 'none' : 'block';
+            document.getElementById('silentGestureHint').style.display = 'none';
+            
+            const tossBtn = document.getElementById('tossBtn');
+            if (tossBtn) {
+                tossBtn.style.display = currentInteractionMode === 'gesture' ? 'none' : 'inline-block';
+                tossBtn.disabled = false; 
+            }
+
+            document.querySelectorAll('.coin').forEach(coin => coin.classList.remove('throwing'));
+            document.querySelectorAll('.result-item').forEach(item => { item.textContent = ''; item.className = 'result-item'; });
+            document.querySelectorAll('.yao-symbol').forEach(yao => { yao.className = 'yao-symbol yao-empty'; });
+            document.querySelectorAll('.dong-indicator').forEach(indicator => { indicator.className = 'dong-indicator'; indicator.textContent = ''; });
+            
+            document.querySelectorAll('.card-placeholder').forEach(card => {
+                card.style.transform = `scale(1.0)`;
+                card.classList.remove('glowing');
+            });
+
+            stopMagicParticles();
+            stopGestureCamera();
+        }
+
+        function startDrawProcess() {
+            resetDrawState();
+            document.getElementById('questionSelectionStage').style.display = 'none';
+            document.getElementById('clickStage').style.display = 'block';
+            document.getElementById('tortoiseStage').style.display = 'block';
+            if (currentInteractionMode === 'gesture') { 
+                document.getElementById('gestureContainer').style.display = 'block'; 
+                startGestureCamera(); 
+            }
+        }
+
+        /* ================= 魔法粒子系统 ================= */
+        let magicCtx = null;
+        let magicParticles = [];
+        let magicAnimFrameId = null;
+
+        function initMagicCanvas() {
+            const canvas = document.getElementById('magicCanvas');
+            magicCtx = canvas.getContext('2d');
+            function resize() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            window.addEventListener('resize', resize);
+            resize();
+        }
+
+        class MagicParticle {
+            constructor(x, y, colorStr) {
+                this.x = x; 
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 5;
+                this.vy = (Math.random() - 0.5) * 5 - 1.5; 
+                this.life = 1.0;
+                this.decay = Math.random() * 0.02 + 0.015;
+                this.size = Math.random() * 3 + 1.5;
+                this.color = colorStr || '212, 175, 55'; 
+            }
+            update() {
+                this.x += this.vx; this.y += this.vy; this.life -= this.decay;
+            }
+            draw(ctx) {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(${this.color}, ${this.life})`;
+                ctx.shadowBlur = 12;
+                ctx.shadowColor = `rgba(${this.color}, ${this.life})`;
+                ctx.fill();
+            }
+        }
+
+        function startMagicParticles() {
+            const canvas = document.getElementById('magicCanvas');
+            canvas.style.display = 'block';
+            magicParticles = [];
+            if(!magicAnimFrameId) animateMagic();
+        }
+
+        function stopMagicParticles() {
+            const canvas = document.getElementById('magicCanvas');
+            canvas.style.display = 'none';
+            if (magicAnimFrameId) { cancelAnimationFrame(magicAnimFrameId); magicAnimFrameId = null; }
+        }
+
+        function animateMagic() {
+            if (gestureState !== 'result_zoom') return;
+            magicCtx.clearRect(0, 0, magicCtx.canvas.width, magicCtx.canvas.height);
+
+            currentCardScale += (targetCardScale - currentCardScale) * 0.15;
+            const cards = document.querySelectorAll('.card-placeholder');
+            cards.forEach(card => {
+                card.style.transform = `scale(${currentCardScale.toFixed(3)})`;
+                if (currentCardScale > 1.1) { card.classList.add('glowing'); } 
+                else { card.classList.remove('glowing'); }
+            });
+
+            for (let i = magicParticles.length - 1; i >= 0; i--) {
+                const p = magicParticles[i];
+                p.update(); p.draw(magicCtx);
+                if (p.life <= 0) magicParticles.splice(i, 1);
+            }
+
+            magicAnimFrameId = requestAnimationFrame(animateMagic);
+        }
+
+        /* ================= MediaPipe 手势识别及缩放逻辑 ================= */
+        const videoElement = document.getElementById('gestureVideo');
+        const canvasElement = document.getElementById('gestureCanvas');
+        const canvasCtx = canvasElement.getContext('2d');
+
+        function updateGestureHint(text) { document.getElementById('gestureHint').textContent = text; }
+
+        function initHands() {
+            if (mpHands) return;
+            mpHands = new Hands({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`});
+            mpHands.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.6, minTrackingConfidence: 0.6 });
+            mpHands.onResults(onHandResults);
+        }
+
+        async function requestCameraPermission() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                stream.getTracks().forEach(track => track.stop());
+                return true;
+            } catch (err) {
+                alert("凌空演卦需借法眼(摄像头)，请在系统设置中赐予权限。");
+                return false;
+            }
+        }
+
+        async function startGestureCamera() {
+            const hasPermission = await requestCameraPermission();
+            if (!hasPermission) {
+                setMode('click'); 
+                return; 
+            }
+            initHands();
+            gestureState = 'shake';
+            updateGestureHint('请握拳并左右摇晃，唤醒灵龟');
+            
+            if (!mpCamera) {
+                mpCamera = new Camera(videoElement, {
+                    onFrame: async () => { await mpHands.send({image: videoElement}); },
+                    width: 320, height: 240
+                });
+            }
+            mpCamera.start();
+        }
+
+        function stopGestureCamera() {
+            if (mpCamera) { mpCamera.stop(); mpCamera = null; } 
+            document.getElementById('gestureContainer').style.display = 'none';
+            document.getElementById('silentGestureHint').style.display = 'none';
+        }
+
+        function triggerShake() {
+            const shell = document.getElementById('tortoiseShell');
+            shell.classList.add('shaking');
+            setTimeout(() => {
+                shell.classList.remove('shaking');
+                document.getElementById('tortoiseStage').style.display = 'none';
+                document.getElementById('coinsStage').style.display = 'block';
+                document.getElementById('hexagramStage').style.display = 'block';
+                gestureState = 'toss';
+                isFistDetected = false; 
+                updateGestureHint('请握拳后张开，投掷金钱 (第 1 掷)');
+            }, 600);
+        }
+
+        function getDistance(p1, p2) { return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2)); }
+        function isFingerExtended(landmarks, tipIdx, pipIdx) { return getDistance(landmarks[tipIdx], landmarks[0]) > getDistance(landmarks[pipIdx], landmarks[0]); }
+
+        function onHandResults(results) {
+            if (gestureState === 'result_zoom') {
+                if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                    const landmarks = results.multiHandLandmarks[0];
+                    const thumb = landmarks[4];
+                    const index = landmarks[8];
+                    
+                    const pinchDist = getDistance(thumb, index);
+                    
+                    let newTargetScale = 1.0;
+                    if (pinchDist > 0.05) {
+                        newTargetScale = 1.0 + (pinchDist - 0.05) * 3.5;
+                        newTargetScale = Math.min(newTargetScale, 1.6);
+                    }
+                    targetCardScale = newTargetScale;
+
+                    if (targetCardScale > 1.15) {
+                        const px = (1 - ((thumb.x + index.x) / 2)) * window.innerWidth; 
+                        const py = ((thumb.y + index.y) / 2) * window.innerHeight;
+                        const particleColor = targetCardScale > 1.4 ? '139, 29, 29' : '212, 175, 55';
+                        for(let i=0; i<3; i++) {
+                            magicParticles.push(new MagicParticle(px, py, particleColor));
+                        }
+                    }
+                } else {
+                    targetCardScale = 1.0;
+                }
+                return;
+            }
+
+            canvasCtx.save();
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+            canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                const landmarks = results.multiHandLandmarks[0];
+                drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {color: '#d4af37', lineWidth: 2}); 
+                drawLandmarks(canvasCtx, landmarks, {color: '#8b1d1d', lineWidth: 1, radius: 2}); 
+
+                if (gestureCooldown) { canvasCtx.restore(); return; }
+
+                const indexOpen = isFingerExtended(landmarks, 8, 6);
+                const middleOpen = isFingerExtended(landmarks, 12, 10);
+                const ringOpen = isFingerExtended(landmarks, 16, 14);
+                const pinkyOpen = isFingerExtended(landmarks, 20, 18);
+
+                const isFist = !indexOpen && !middleOpen && !ringOpen && !pinkyOpen;
+                const isOpen = indexOpen && middleOpen && ringOpen && pinkyOpen;
+                const isSword = indexOpen && middleOpen && !ringOpen && !pinkyOpen;
+
+                if (gestureState === 'shake') {
+                    if (isFist) {
+                        wristHistory.push({x: landmarks[0].x, y: landmarks[0].y});
+                        if (wristHistory.length > 15) wristHistory.shift(); 
+                        if (wristHistory.length > 5) {
+                            const xs = wristHistory.map(p => p.x); const ys = wristHistory.map(p => p.y);
+                            const movement = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
+                            if (movement > 0.06) { 
+                                triggerShake(); gestureCooldown = true; setTimeout(() => { gestureCooldown = false; }, 1000); wristHistory = [];
+                            }
+                        }
+                    } else { wristHistory = []; }
+                } else if (gestureState === 'toss') {
+                    if (isFist && !isFistDetected) {
+                        isFistDetected = true; updateGestureHint(`已握拳，请用力张开手掌 (第 ${throwCount + 1} 掷)`);
+                    } else if (isOpen && isFistDetected) {
+                        tossCoins(); isFistDetected = false; gestureCooldown = true; updateGestureHint('掷钱中...'); setTimeout(() => { gestureCooldown = false; }, 1500); 
+                    }
+                } else if (gestureState === 'sword') {
+                    if (isSword) {
+                        document.getElementById('gestureContainer').style.display = 'none';
+                        gestureState = 'result_zoom'; 
+                        document.getElementById('silentGestureHint').style.display = 'block';
+                        showResult(); 
+                    }
+                }
+            }
+            canvasCtx.restore();
+        }
+
+        /* ================= 绑定事件区 ================= */
+        function initQuestionLibrary() {
+            const categoriesContainer = document.getElementById('questionCategories');
+            const categories = Object.keys(QUESTION_LIBRARY);
+            categoriesContainer.innerHTML = categories.map(cat => `<button class="category-btn" data-category="${cat}">${cat}</button>`).join('');
+            categoriesContainer.querySelectorAll('.category-btn').forEach(btn => {
+                btn.addEventListener('click', () => selectCategory(btn.dataset.category));
+            });
+            if (categories.length > 0) selectCategory(categories[0]);
+            
+            // 核心：绑定点击事件，在此处进行商业化逻辑拦截
+            document.getElementById('startTossBtn').addEventListener('click', () => {
+                if (!selectedQuestion) return;
+
+                // 1. 已登录用户逻辑
+                if (currentUser) {
+                    // 若无该字段（老用户兼容）或未添加微信，则弹窗拦截
+                    if (usersDB[currentUser].hasAddedWeChat === undefined || usersDB[currentUser].hasAddedWeChat === false) {
+                        document.getElementById('wechatUnlockModal').classList.add('active');
+                        return;
+                    }
+                } 
+                // 2. 游客逻辑
+                else {
+                    if (hasUsedTrial) {
+                        showModal('法力耗尽', '道友，单次试玩机缘已尽。请登堂入室（登录）并结缘官方，解锁无限机缘。', () => {
+                            showPage('loginPage');
+                        });
+                        return;
+                    }
+                }
+
+                // 3. 校验通过，直接进入流程
+                startDrawProcess();
+            });
+        }
+
+        function selectCategory(category) {
+            selectedCategory = category;
+            document.querySelectorAll('.category-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`.category-btn[data-category="${category}"]`).classList.add('active');
+            const questionList = document.getElementById('questionList');
+            if (category === '诚心一问') {
+                questionList.innerHTML = '<p style="text-align: center; color: #a99a80; padding: 20px;">随心而问，神灵鉴之</p>';
+                selectedQuestion = '诚心一问（无定类）';
+            } else {
+                questionList.innerHTML = QUESTION_LIBRARY[category].map(q => `<div class="question-item" data-question="${q}">${q}</div>`).join('');
+                questionList.querySelectorAll('.question-item').forEach(item => { item.addEventListener('click', () => selectQuestion(item.dataset.question)); });
+                selectedQuestion = null;
+            }
+            updateSelectedQuestion();
+        }
+        function selectQuestion(question) {
+            selectedQuestion = question;
+            document.querySelectorAll('.question-item').forEach(item => item.classList.remove('selected'));
+            document.querySelector(`.question-item[data-question="${question}"]`).classList.add('selected');
+            updateSelectedQuestion();
+        }
+        function updateSelectedQuestion() {
+            const selectedContainer = document.getElementById('selectedQuestion');
+            const selectedText = document.getElementById('selectedQuestionText');
+            const startBtn = document.getElementById('startTossBtn');
+            if (selectedQuestion) { selectedContainer.classList.add('show'); selectedText.textContent = selectedQuestion === '诚心一问（无定类）' ? '随心而问，心诚则灵' : selectedQuestion; startBtn.disabled = false; } 
+            else { selectedContainer.classList.remove('show'); startBtn.disabled = true; }
+        }
+
+        function renderHistory() {
+            const list = document.getElementById('historyList'); const clearBtn = document.getElementById('clearHistoryBtn');
+            if (drawHistory.length === 0) {
+                list.innerHTML = '<li style="text-align: center; color: #666; padding: 40px; font-size:1.1rem;">法卷空白，暂无所录</li>';
+                if (clearBtn) clearBtn.style.display = 'none'; return;
+            }
+            if (clearBtn) clearBtn.style.display = 'block';
+            list.innerHTML = drawHistory.map((item, index) => `
+                <li class="history-item" data-index="${index}" onclick="toggleHistoryItem(${index})">
+                    <div class="history-header"><div style="display:flex; justify-content:space-between;"><span class="history-gua-name">${item.guaName}</span><span style="color:#6b4c05; font-size:0.9rem;">${item.timestamp}</span></div></div>
+                    <div style="color:#d4af37; font-size:0.9rem; margin-bottom:5px;">【${item.category}】</div>
+                    <div style="color:#e5d3b3; margin-bottom:10px;">${item.question}</div>
+                    <div class="history-reading" style="display:none; border-top:1px dashed #4a3018; padding-top:10px; margin-top:10px;">${item.reading}</div>
+                </li>`).join('');
+        }
+        function toggleHistoryItem(index) { const el = document.querySelector(`.history-item[data-index="${index}"] .history-reading`); el.style.display = el.style.display === 'none' ? 'block' : 'none'; }
+
+        // 事件绑定
+        document.getElementById('loginRouteBtn').addEventListener('click', () => showPage('loginPage'));
+        document.getElementById('userCenterBtn').addEventListener('click', () => showPage('userCenterPage'));
+        
+        document.getElementById('historyBtn').addEventListener('click', () => { 
+            if(!currentUser) { showModal('暂未登录', '您正以游客身份阅览，登录可永久保存您的问卦纪事。'); }
+            renderHistory(); showPage('historyPage'); 
+        });
+        document.getElementById('historyBtn2').addEventListener('click', () => { 
+            if(!currentUser) { showModal('暂未登录', '您正以游客身份阅览，登录可永久保存您的问卦纪事。'); }
+            renderHistory(); showPage('historyPage'); 
+        });
+
+        document.getElementById('backFromResultBtn').addEventListener('click', () => { resetDrawState(); showPage('homePage'); });
+        document.getElementById('drawAgainBtn').addEventListener('click', () => { resetDrawState(); showPage('drawPage'); });
+        document.getElementById('shareBtn').addEventListener('click', () => { document.getElementById('shareModal').classList.add('active'); });
+        document.getElementById('shareModalClose').addEventListener('click', () => { document.getElementById('shareModal').classList.remove('active'); });
+        document.getElementById('backFromDrawBtn').addEventListener('click', () => { resetDrawState(); showPage('homePage'); });
+        document.getElementById('backFromHistoryBtn').addEventListener('click', () => { showPage('homePage'); });
+        document.getElementById('backToHomeBtn').addEventListener('click', () => { showPage('homePage'); });
+        document.getElementById('clearHistoryBtn').addEventListener('click', () => { showModal('焚毁卦志', '确定要将过往天机尽数焚毁吗？此法不可逆转。', () => { drawHistory = []; saveData(); renderHistory(); }); });
+        document.getElementById('tortoiseShell').addEventListener('click', () => { if (currentInteractionMode === 'click') triggerShake(); });
+        document.getElementById('tossBtn').addEventListener('click', tossCoins);
+        
+        document.querySelectorAll('.card-placeholder').forEach(card => {
+            card.addEventListener('mouseenter', () => { if(currentInteractionMode === 'click') card.style.transform = `scale(1.05)`; });
+            card.addEventListener('mouseleave', () => { if(currentInteractionMode === 'click') card.style.transform = `scale(1.0)`; });
+        });
+
+        window.addEventListener('DOMContentLoaded', () => { 
+            loadData(); 
+            initQuestionLibrary(); 
+            initMagicCanvas(); 
+        });
+    </script>
+</body>
+</html>
